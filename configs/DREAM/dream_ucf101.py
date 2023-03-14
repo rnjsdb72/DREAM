@@ -20,30 +20,41 @@ model = dict(
             depth=50,
             pretrained=None,
             lateral=True,
-            base_channels=8,
-            fusion_kernel=7,
+            base_channels=64,
+            fusion_kernel=4,
             conv1_kernel=(1, 7, 7),
             dilations=(1, 1, 1, 1),
             conv1_stride_t=1,
             pool1_stride_t=1,
             inflate=(0, 0, 1, 1),
             in_channels=3,
-            norm_eval=False),
+            norm_eval=False,
+            lateral_channels=32, # Must same base channel with ske_pathway!
+            lateral_num_stages=3, # Must same num_stages with ske_pathway!
+            lateral_lambda=1 # Weight to indicate how much skeleton modality will be reflected
+            ),
         ske_pathway=dict(
             type='resnet3d',
-            depth=34,
+            depth=50,
             pretrained=None,
             lateral=False,
-            in_channels=17,
-            base_channels=8,
+            base_channels=32,
             conv1_kernel=(1, 7, 7),
-            conv1_stride_t=1,
-            pool1_stride_t=1,
-            norm_eval=False)),
+            dilations=(1, 1, 1),
+            conv1_stride=(1, 1),
+            pool1_stride=(1, 1),
+            inflate=(0, 1, 1),
+            in_channels=17,
+            norm_eval=False,
+            num_stages=3,
+            stage_blocks=(3,4,6),
+            out_indices=(2,),
+            spatial_strides=(1, 2, 2),
+            temporal_strides=(1, 1, 1))),
     cls_head=dict(
         type='SlowFastHead',
         loss_cls=evidence_loss,
-        in_channels=320,  # RGB output channel + SKE output channel
+        in_channels=2560,  # RGB output channel + SKE output channel
         num_classes=101,
         spatial_type='avg',
         dropout_ratio=0.5))
@@ -139,7 +150,7 @@ test_pipeline = {
 }
 dual_modality = True
 data = dict(
-    videos_per_gpu=8,
+    videos_per_gpu=1,
     workers_per_gpu=0,
     test_dataloader=dict(videos_per_gpu=1),
     train={
@@ -187,5 +198,8 @@ dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = './output/dreamnet'
 resume_from = None
-load_from = None
+load_from = {
+                "rgb_path":"https://download.openmmlab.com/mmaction/recognition/slowonly/slowonly_r50_4x16x1_256e_kinetics400_rgb/slowonly_r50_4x16x1_256e_kinetics400_rgb_20200704-a69556c6.pth",
+                "ske_path":"https://download.openmmlab.com/mmaction/skeleton/posec3d/k400_posec3d-041f49c6.pth"
+             }
 find_unused_parameters = False
